@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+exp_internal 1
+# device
+set ports "/dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2"
+set output [open "/tmp/data" "a"]
+foreach port $ports {
+set modem $port
+#set modem /dev/ttyACM1
+set systemTime [clock seconds]
+set currentT "[clock format $systemTime -format %m-%d-%Y] "
+append currentT "[clock format $systemTime -format %H:%M:%S],"
+# keep it open
+exec sh -c "sleep 3 < $modem" &
+
+# serial port parameters
+exec stty -F $modem 9600 raw -clocal -echo -istrip -hup
+
+# connect
+send_user "connecting to $modem, exit with ~.\n"
+spawn -open [open $modem w+]
+sleep 2
+send "1\r"
+expect "#"
+set outcome "\n"
+set lines [split $expect_out(buffer) "!"]
+foreach i $lines {
+if {[string first "#" $i] == -1} {
+append outcome $currentT
+append outcome $i
+append outcome "\n"
+}
+}
+puts $output $outcome
+close -i $spawn_id
+}
+close $output 
